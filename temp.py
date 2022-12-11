@@ -122,6 +122,7 @@ while True:
                                % film_id[0], rate)
         except Error as e:
             rate = input("insert a rating :")
+    cnx.commit()
 #### till here
     cursor.execute("""SELECT f.title,concat(re.first_name, ' ' ,re.last_name ) ,r.rating
     FROM rating as r,film as f,reviewer as re 
