@@ -1,3 +1,4 @@
+-- Find all categories whose name contains one 'a'
 SELECT name
-FROM sakila.category
-WHERE REGEXP_LIKE(name,'^[^a]*a[^a]*$'); #inCase sensetive natching category
+FROM category
+WHERE name REGEXP '^[^a]*a[^a]*$'
