@@ -1,63 +1,83 @@
 import os
-import mysql.connector 
-cnx = mysql.connector.connect( user = 'root' ,password ='A7mad.jorban', host='localhost',database = "sakila")
+import mysql.connector
+from mysql.connector import Error
+# Load dotenv file
+from dotenv import load_dotenv
+load_dotenv()
+# Read the password from the environment variable
+password = os.getenv('MYSQL_ROOT_PASSWORD')
+
+
+
+cnx = mysql.connector.connect(
+    user='root',
+    password ='A7mad.jorban',
+    host='localhost',
+    database='sakila'
+    )
+
+
 cursor = cnx.cursor()
-#cursor = cnx.cursor(prepared=True)
 cursor = cnx.cursor(buffered=True)
-cursor.execute("DROP TABLE IF EXISTS `reviewer` ;")
-cursor.execute("DROP TABLE IF EXISTS `rating` ;")
-
-def isDigit(x):
-    return x >= '0' and x <= '9'
-def isValid_rating(rating):
-    if len(rating) == 3:
-        return isDigit(rating[0]) and rating[1] == '.' and isDigit(rating[2])
-    return False
-
-def isNumber(id):
-    for digit in id:
-        if not isDigit(digit):
-            return False
-    return True
 
 cursor.execute("""
-    CREATE TABLE reviewer (
-      ID smallint NOT NULL PRIMARY KEY,
+    CREATE TABLE if NOT EXISTS reviewer (
+      reviewer_id INT UNSIGHN AUTO_INCREMENT PRIMARY KEY,
       first_name varchar(45) NOT NULL,
       last_name varchar(45) NOT NULL 
+      CHECK(REGEXP_LIKE(id, '^[0-9]+$'))
+      CHECK(REGEXP_LIKE(first_name, '^[a-z|A-Z]+$'))
+      CHECK(REGEXP_LIKE(last_name, '^[a-z|A-Z]+$'))
     );
 """)
 
 cursor.execute("""
-    CREATE TABLE  rating (
-      film_id smallint NOT NULL UNIQUE,
-      reviewer_id INT NOT NULL UNIQUE,
+    CREATE TABLE if NOT EXISTS rating (
+      film_id smallint UNSIGHN AUTO_INCREMENT,
+      reviewer_id INT UNSIGHNED,
       rating decimal(2,1) NOT NULL
+      PRIMARY KEY (film_id, reviewer_id)
+      FOREIGN KEY (film_id)
+        REFERENCES film (film_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+      FOREIGN KEY (reviewer_id)
+        REFERENCES reviewer (reviewer_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+      CHECK(REGEXP_LIKE('^[0-9]\\.[0-9]$'))
     );
 """)
-insert_statement = "INSERT INTO reviewer (ID,first_name, last_name) VALUES (%s, %s ,%s)"
+cnx.commit()
 
+insert_statement = "INSERT INTO reviewer (reviewer_id,first_name, last_name) VALUES (%s, %s ,%s)"
+reviewer_per_id = "SELECT * FROM reviewer WHERE reviewer_id = '%s'"
+all_by_film_name = "SELECT * FROM film WHERE title = '%s'"""
+all_films_by_film_id = "SELECT * FROM film WHERE film_id = '%s'"
+all_ratings_by_film_id = "SELECT * FROM rating WHERE film_id = '%s'"
 while True:
+    reviewer_id = input("please insert your id : ")
     while True:
-        print("please insert your id : ")
-        id = input()
-        if isNumber(id):
+        try:
+            cursor.execute(reviewer_per_id, [reviewer_id])
+            result = cursor.fetchone()
             break
-
-    cursor.execute("""SELECT * FROM reviewer WHERE ID = '%s'""" % (int(id)))
-    result = cursor.fetchone() 
-    #step number 2
-    if result is None:
-        print("insert your first name :")
-        first_name = input()
-        print("insert your last name :")
-        last_name = input()
-        value = (int(id) ,first_name ,last_name)
-        cursor.execute(insert_statement, value)
-    cursor.execute("""SELECT * FROM reviewer WHERE ID = '%s'""" % (int(id)))
-    result = cursor.fetchone()
-    #step number 3
-    print (("Hello, " + result[1] + " " + result[2]))
+        except Error as e:
+            reviewer_id = input("please insert your id : ")
+    # step number 2
+    first_name = input("insert your first name :")
+    last_name = input("insert your last name :")
+    while True:
+        try:
+            value = (reviewer_id, first_name, last_name)
+            cursor.execute(insert_statement, value)
+            cursor.execute(reviewer_per_id, [id])
+            result = cursor.fetchone()
+            break
+        except Error as e:
+            first_name = input("insert your first name :")
+            last_name = input("insert your last name :")
+    cnx.commit()
+    # step number 3
+    print(("Hello, " + result[1] + " " + result[2]))
     film_id = -1
     flag = 1
     while True:
@@ -67,50 +87,49 @@ while True:
             print("insert a different film name: ")
         film_name = input()
 
-        cursor.execute("""SELECT * FROM film WHERE title = '%s'""" %film_name)
+        cursor.execute(all_by_film_name, [film_name])
         result = cursor.fetchall()
         if not result:
             print("the film doesn't exist")
             flag = 0
             continue
-        
-        cursor.execute("""SELECT Count(*) FROM film WHERE title = '%s'""" %film_name)
+
+        cursor.execute(all_by_film_name, [film_name])
         count = cursor.fetchone()
-        
+######what is this?
         if count[0] > 1:
             for rows in result:
-                print (str(rows[0]) +" " + rows[3])
+                print(str(rows[0]) + " " + rows[3])
             # take care of invalid input here
-            print("please insert film id : ")
-            fId = input()
-            cursor.execute("""SELECT * FROM film WHERE film_id = '%s'""" %int(fId))
+            fId = input("please insert film id : ")
+            cursor.execute(all_films_by_film_id, [fId])
             if cursor.fetchone() is not None:
-                film_id=int(fId)
+                film_id = int(fId)
                 break
             else:
                 continue
         else:
             film_id = result[0]
             break
+    rate = input("insert a rating :")
     while True:
-        print("insert a rating :")
-        rate = input()
-        if isValid_rating(rate):
-            break
-
-    cursor.execute("""SELECT * FROM rating WHERE film_id = '%s'""" %int(film_id[0]) )
-    if  cursor.fetchone() is not None :
-        cursor.execute("DELETE FROM rating WHERE film_id = '%s'""" %int(film_id[0]))
-    cursor.execute("INSERT INTO rating (film_id,reviewer_id, rating) VALUES (%s, %s ,%s)",(int(film_id[0]) ,int(id) , float(rate)))
-
-
+        try:
+            cursor.execute(all_ratings_by_film_id, [film_id[0]])
+            if cursor.fetchone() is None:
+                cursor.execute("INSERT INTO rating (film_id,reviewer_id, rating) VALUES (%s, %s ,%s)",
+                               (int(film_id[0]), int(id), float(rate)))
+                break
+            else:
+                cursor.execute("UPDATE rating SET reviewer_id, rating WHERE film_id = '%s', rating = '%s'"""
+                               % film_id[0], rate)
+        except Error as e:
+            rate = input("insert a rating :")
+    cnx.commit()
+#### till here
     cursor.execute("""SELECT f.title,concat(re.first_name, ' ' ,re.last_name ) ,r.rating
     FROM rating as r,film as f,reviewer as re 
     WHERE re.ID = reviewer_id and r.film_id = f.film_id
-    """ )
+    """)
     result = cursor.fetchall()
     for row in result:
         print(row[0] + " " + row[1] + " " + str(row[2]))
-
-
-
