@@ -3,78 +3,88 @@ import mysql.connector
 from mysql.connector import Error
 # Load dotenv file
 from dotenv import load_dotenv
+
 load_dotenv()
 # Read the password from the environment variable
 password = os.getenv('MYSQL_ROOT_PASSWORD')
 
-
-
 cnx = mysql.connector.connect(
     user='root',
-    password ='A7mad.jorban',
+    password=password,
     host='localhost',
     database='sakila'
-    )
+)
 
-
-cursor = cnx.cursor()
 cursor = cnx.cursor(buffered=True)
 
 cursor.execute("""
-    CREATE TABLE if NOT EXISTS reviewer (
-      reviewer_id INT UNSIGHN AUTO_INCREMENT PRIMARY KEY,
-      first_name varchar(45) NOT NULL,
-      last_name varchar(45) NOT NULL 
-      CHECK(REGEXP_LIKE(id, '^[0-9]+$'))
-      CHECK(REGEXP_LIKE(first_name, '^[a-z|A-Z]+$'))
-      CHECK(REGEXP_LIKE(last_name, '^[a-z|A-Z]+$'))
-    );
+CREATE TABLE if NOT EXISTS reviewer (
+  reviewer_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  first_name varchar(45) NOT NULL,
+  last_name varchar(45) NOT NULL,
+  CHECK (REGEXP_LIKE(reviewer_id, '^[0-9]+$')),
+  CHECK (REGEXP_LIKE(first_name, '^[a-z|A-Z]+$')),
+  CHECK (REGEXP_LIKE(last_name, '^[a-z|A-Z]+$'))
+);
+
 """)
 
 cursor.execute("""
-    CREATE TABLE if NOT EXISTS rating (
-      film_id smallint UNSIGHN AUTO_INCREMENT,
-      reviewer_id INT UNSIGHNED,
-      rating decimal(2,1) NOT NULL
-      PRIMARY KEY (film_id, reviewer_id)
-      FOREIGN KEY (film_id)
-        REFERENCES film (film_id)
-        ON UPDATE CASCADE ON DELETE CASCADE
-      FOREIGN KEY (reviewer_id)
-        REFERENCES reviewer (reviewer_id)
-        ON UPDATE CASCADE ON DELETE CASCADE
-      CHECK(REGEXP_LIKE('^[0-9]\\.[0-9]$'))
-    );
+CREATE TABLE if NOT EXISTS rating (
+  film_id smallint UNSIGNED AUTO_INCREMENT,
+  reviewer_id INT UNSIGNED,
+  rating decimal(2,1) NOT NULL,
+  PRIMARY KEY (film_id, reviewer_id),
+  FOREIGN KEY (film_id)
+    REFERENCES film (film_id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (reviewer_id)
+    REFERENCES reviewer (reviewer_id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CHECK(REGEXP_LIKE(rating, '^[0-9]\\.[0-9]$'))
+);
 """)
 cnx.commit()
 
-insert_statement = "INSERT INTO reviewer (reviewer_id,first_name, last_name) VALUES (%s, %s ,%s)"
+insert_statement = "INSERT INTO reviewer(reviewer_id,first_name, last_name) VALUES (%s, %s ,%s)"
 reviewer_per_id = "SELECT * FROM reviewer WHERE reviewer_id = '%s'"
 all_by_film_name = "SELECT * FROM film WHERE title = '%s'"""
 all_films_by_film_id = "SELECT * FROM film WHERE film_id = '%s'"
 all_ratings_by_film_id = "SELECT * FROM rating WHERE film_id = '%s'"
+know = 0
 while True:
     reviewer_id = input("please insert your id : ")
     while True:
         try:
-            cursor.execute(reviewer_per_id, [reviewer_id])
-            result = cursor.fetchone()
-            break
-        except Error as e:
+            id = int(reviewer_id)
+            try:
+                cursor.execute(reviewer_per_id % id)
+                result = cursor.fetchone()
+            except:
+                break
+        except ValueError:
             reviewer_id = input("please insert your id : ")
+            continue
     # step number 2
+
     first_name = input("insert your first name :")
     last_name = input("insert your last name :")
     while True:
         try:
-            value = (reviewer_id, first_name, last_name)
+            #print(reviewer_id + first_name +last_name)
+            value = (int(reviewer_id), first_name, last_name)
+            print("here")
             cursor.execute(insert_statement, value)
-            cursor.execute(reviewer_per_id, [id])
+            print("here 1")
+            cnx.commit()
+            cursor.execute(reviewer_per_id % int(reviewer_id))
+            print("here 2")
             result = cursor.fetchone()
             break
         except Error as e:
             first_name = input("insert your first name :")
             last_name = input("insert your last name :")
+            continue
     cnx.commit()
     # step number 3
     print(("Hello, " + result[1] + " " + result[2]))
@@ -96,7 +106,6 @@ while True:
 
         cursor.execute(all_by_film_name, [film_name])
         count = cursor.fetchone()
-######what is this?
         if count[0] > 1:
             for rows in result:
                 print(str(rows[0]) + " " + rows[3])
@@ -121,11 +130,11 @@ while True:
                 break
             else:
                 cursor.execute("UPDATE rating SET reviewer_id, rating WHERE film_id = '%s', rating = '%s'"""
-                               % film_id[0], rate)
+                               % (film_id[0], rate))
         except Error as e:
             rate = input("insert a rating :")
     cnx.commit()
-#### till here
+    # till here
     cursor.execute("""SELECT f.title,concat(re.first_name, ' ' ,re.last_name ) ,r.rating
     FROM rating as r,film as f,reviewer as re 
     WHERE re.ID = reviewer_id and r.film_id = f.film_id
