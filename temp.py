@@ -54,9 +54,8 @@ insert_rating = """INSERT INTO rating (film_id,reviewer_id, rating) VALUES (%s, 
 update_rating = """UPDATE rating SET rating = %s WHERE film_id = %s AND reviewer_id = %s"""
 final_output = """SELECT f.title,concat(re.first_name, ' ' ,re.last_name ) ,r.rating
     FROM rating as r,film as f,reviewer as re 
-    WHERE reviewer.ID = reviewer_id and r.film_id = f.film_id
-    LIMIT 100
-    """
+    WHERE re.reviewer_id = r.reviewer_id and r.film_id = f.film_id
+    LIMIT 100"""
 know = 0
 while True:
     reviewer_id = input("please insert your id : ")
