@@ -22,10 +22,7 @@ CREATE TABLE if NOT EXISTS reviewer (
   reviewer_id INT UNSIGNED PRIMARY KEY,
   first_name varchar(45) NOT NULL,
   last_name varchar(45) NOT NULL,
-  CHECK (REGEXP_LIKE(reviewer_id, '^[0-9]+$')),
-  CHECK (REGEXP_LIKE(first_name, '^[a-z|A-Z]+$')),
-  CHECK (REGEXP_LIKE(last_name, '^[a-z|A-Z]+$'))
-);
+  CHECK (REGEXP_LIKE(reviewer_id, '^[0-9]+$')));
 """)
 
 cursor.execute("""
