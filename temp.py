@@ -30,7 +30,7 @@ CREATE TABLE if NOT EXISTS reviewer (
 
 cursor.execute("""
 CREATE TABLE if NOT EXISTS rating (
-  film_id smallint UNSIGNED AUTO_INCREMENT,
+  film_id smallint UNSIGNED,
   reviewer_id INT UNSIGNED,
   rating decimal(2,1) NOT NULL,
   PRIMARY KEY (film_id, reviewer_id),
@@ -45,11 +45,18 @@ CREATE TABLE if NOT EXISTS rating (
 """)
 cnx.commit()
 
-insert_statement = "INSERT INTO reviewer(reviewer_id,first_name, last_name) VALUES (%s, %s ,%s)"
-reviewer_per_id = "SELECT * FROM reviewer WHERE reviewer_id = '%s'"
-all_by_film_name = "SELECT * FROM film WHERE title = '%s'"""
-all_films_by_film_id = "SELECT * FROM film WHERE film_id = '%s'"
-all_ratings_by_film_id = "SELECT * FROM rating WHERE film_id = '%s'"
+insert_reviewer = """INSERT INTO reviewer(reviewer_id,first_name, last_name) VALUES (%s, %s ,%s)"""
+reviewer_per_id = """SELECT * FROM reviewer WHERE reviewer_id = %s"""
+films_by_film_name = """SELECT * FROM film WHERE title = %s"""
+films_by_film_id = """SELECT * FROM film WHERE film_id = %s"""
+ratings_by_film_and_reviewer_id = """SELECT * FROM rating WHERE film_id = %s And reviewer_id = %s"""
+insert_rating = """INSERT INTO rating (film_id,reviewer_id, rating) VALUES (%s, %s ,%s)"""
+update_rating = """UPDATE rating SET rating = %s WHERE film_id = %s AND reviewer_id = %s"""
+final_output = """SELECT f.title,concat(re.first_name, ' ' ,re.last_name ) ,r.rating
+    FROM rating as r,film as f,reviewer as re 
+    WHERE reviewer.ID = reviewer_id and r.film_id = f.film_id
+    LIMIT 100
+    """
 know = 0
 while True:
     reviewer_id = input("please insert your id : ")
@@ -68,7 +75,7 @@ while True:
         last_name = input("insert your last name :")
         value = (int(reviewer_id), first_name, last_name)
         try:
-            cursor.execute(insert_statement, value)
+            cursor.execute(insert_reviewer, value)
             cursor.execute(reviewer_per_id % int(reviewer_id))
             result = cursor.fetchone()
             break
@@ -86,49 +93,56 @@ while True:
         else:
             print("insert a different film name: ")
         film_name = input()
-
-        cursor.execute(all_by_film_name, [film_name])
+        cursor.execute(films_by_film_name, [film_name])
         result = cursor.fetchall()
         if not result:
             print("the film doesn't exist")
             flag = 0
             continue
-
-        cursor.execute(all_by_film_name, [film_name])
-        count = cursor.fetchone()
-        if count[0] > 1:
+        if len(result) > 1:
             for rows in result:
                 print(str(rows[0]) + " " + rows[3])
-            # take care of invalid input here
             fId = input("please insert film id : ")
-            cursor.execute(all_films_by_film_id, [fId])
+            try:
+                fId = int(fId)
+            except ValueError:
+                flag = 1
+                continue
+            cursor.execute(films_by_film_id % int(fId))
             if cursor.fetchone() is not None:
                 film_id = int(fId)
                 break
             else:
                 continue
         else:
-            film_id = result[0]
+            film_id = result[0][0]
             break
-    rate = input("insert a rating :")
+    rate = input("please insert a rating : ")
     while True:
         try:
-            cursor.execute(all_ratings_by_film_id, [film_id[0]])
-            if cursor.fetchone() is None:
-                cursor.execute("INSERT INTO rating (film_id,reviewer_id, rating) VALUES (%s, %s ,%s)",
-                               (int(film_id[0]), int(id), float(rate)))
+            rate = float(rate)
+        except ValueError:
+            print("invalid input")
+            rate = input("please insert a rating : ")
+            continue
+        cursor.execute(ratings_by_film_and_reviewer_id, [film_id, reviewer_id])
+        result = cursor.fetchone()
+        if (result is not None):
+            try:
+                cursor.execute(update_rating, [float(rate), int(film_id), int(reviewer_id)])
                 break
-            else:
-                cursor.execute("UPDATE rating SET reviewer_id, rating WHERE film_id = '%s', rating = '%s'"""
-                               % (film_id[0], rate))
-        except Error as e:
-            rate = input("insert a rating :")
+            except Error as e:
+                rate = input("please insert a rating : ")
+                continue
+        else:
+            try:
+                cursor.execute(insert_rating, [int(film_id), int(reviewer_id), float(rate)])
+                break
+            except Error as e:
+                rate = input("please insert a rating : ")
+                continue
     cnx.commit()
-    # till here
-    cursor.execute("""SELECT f.title,concat(re.first_name, ' ' ,re.last_name ) ,r.rating
-    FROM rating as r,film as f,reviewer as re 
-    WHERE re.ID = reviewer_id and r.film_id = f.film_id
-    """)
+    cursor.execute(final_output)
     result = cursor.fetchall()
     for row in result:
         print(row[0] + " " + row[1] + " " + str(row[2]))
