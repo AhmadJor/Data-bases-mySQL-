@@ -97,7 +97,7 @@ while True:
             continue
         if len(result) > 1:
             for rows in result:
-                print(str(rows[0]) + " " + rows[3])
+                print(str(rows[0]) + " " + str(rows[3]))
             fId = input("please insert film id : ")
             try:
                 fId = int(fId)
