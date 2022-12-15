@@ -1,2 +1,1 @@
-# Data-bases-mySQL-
-this home work is to get our hands on data bases (schema, python,...)
+In this repository, we tackled 11 challenging SQL queries on the Sakila database. We used Python connector to create and execute relationships, and paid close attention to SQL schema constraints. Our work covers many important aspects of SQL and showcases our skills in data analysis and problem-solving.
